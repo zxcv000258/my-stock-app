@@ -1,87 +1,77 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
+import requests
+import re
 
-# --- 1. 極致高級感 CSS 注入 ---
+# --- 1. 極速 Google Finance 數據引擎 (完全取代 Yahoo) ---
+def get_google_data(tk):
+    try:
+        # 處理台股代號格式 (如 2330 -> TPE:2330)
+        symbol = f"TPE:{tk}" if tk.isdigit() else tk
+        url = f"https://www.google.com/search?q={symbol}+stock+price"
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        resp = requests.get(url, headers=headers).text
+        
+        # 使用正則表達式直接從 Google 搜尋結果抓取價格
+        price = re.search(r'data-precision="2">([\d,.]+)<', resp).group(1).replace(',', '')
+        return float(price)
+    except:
+        return None
+
+# --- 2. 徹底封裝 UI：注入 1930s 動畫靈魂 ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Arvo:wght@700&family=Chewy&display=swap');
-
-    /* 徹底隱藏原生組件 */
+    @import url('https://fonts.googleapis.com/css2?family=Chewy&display=swap');
     [data-testid="stHeader"], .stAppHeader { display: none !important; }
     
     .stApp {
         background-color: #f4ead0;
-        background-image: url("https://www.transparenttextures.com/patterns/p6.png");
-        font-family: 'Arvo', serif;
+        background-image: url("https://www.transparenttextures.com/patterns/black-paper.png");
+        color: #262626;
+        animation: film-grain 0.1s infinite;
     }
 
-    /* 高級橡皮管卡片 */
-    .premium-card {
-        background: transparent;
-        border: 8px solid #262626;
-        padding: 30px;
+    @keyframes film-grain { 0% { opacity: 0.98; } 100% { opacity: 1; } }
+
+    .rubber-box {
+        border: 10px solid #262626;
+        padding: 40px;
         margin: 20px;
-        box-shadow: 15px 15px 0px #262626;
+        box-shadow: 20px 20px 0px #262626;
         text-align: center;
-        border-radius: 4px;
+        background: transparent;
     }
 
-    .ticker-title { font-family: 'Chewy', cursive; font-size: 32px; color: #262626; }
-    .price-display { font-family: 'Chewy', cursive; font-size: 85px; margin: 20px 0; color: #262626; line-height: 1; }
-    
-    /* 輸入框美化 */
     .stTextInput input {
         background: transparent !important;
         border: 6px solid #262626 !important;
         border-radius: 0 !important;
         font-family: 'Chewy', cursive;
-        font-size: 28px !important;
+        font-size: 32px !important;
         text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. 核心數據請求 ---
-def get_stock_data(tk):
-    try:
-        s = yf.Ticker(tk)
-        d = s.history(period="1d", interval="1m")
-        if d.empty: d = s.history(period="5d", interval="1d")
-        return {"p": d['Close'].iloc[-1], "d": d} if not d.empty else None
-    except: return None
+# --- 3. 介面渲染 ---
+st.markdown("<h1 style='text-align:center; font-family:Chewy; font-size:50px;'>🎬 STOCK-O-RAMA</h1>", unsafe_allow_html=True)
 
-# --- 3. 頁面渲染 ---
-st.markdown("<h1 style='text-align:center; font-family:Chewy; font-size:45px; margin-top:30px;'>📽️ STOCK-O-RAMA</h1>", unsafe_allow_html=True)
-
-q = st.text_input("", placeholder="TYPE TICKER...")
+q = st.text_input("", placeholder="ENTER TICKER...")
 
 if q:
-    res = get_stock_data(q)
-    if res:
-        # 顯示專業卡片
+    price = get_google_data(q)
+    if price:
         st.markdown(f"""
-            <div class="premium-card">
-                <div class="ticker-title">{q.upper()}</div>
-                <div class="price-display">${round(res['p'], 2)}</div>
-                <div style="font-family:Chewy; border-top:4px solid #262626; padding-top:10px;">MOTION PICTURE TRADING</div>
+            <div class="rubber-box">
+                <div style="font-family:Chewy; font-size:30px;">TICKER: {q.upper()}</div>
+                <div style="font-family:Chewy; font-size:100px; margin:20px 0;">${price}</div>
+                <div style="font-family:Chewy; font-size:20px; border-top:5px solid #262626; padding-top:10px;">
+                    REAL-TIME GOOGLE DATA 📡
+                </div>
             </div>
         """, unsafe_allow_html=True)
-
-        # 墨水感技術圖表
-        fig = go.Figure(data=[go.Candlestick(
-            x=res['d'].index, open=res['d']['Open'], high=res['d']['High'], low=res['d']['Low'], close=res['d']['Close'],
-            increasing_line_color='#262626', decreasing_line_color='#262626',
-            increasing_fillcolor='#3b5a2a', decreasing_fillcolor='#ae3f2f',
-            line_width=3
-        )])
-        fig.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            xaxis_visible=False, yaxis_gridcolor='rgba(38,38,38,0.2)',
-            height=400, margin=dict(l=10, r=10, t=0, b=0),
-            xaxis_rangeslider_visible=False
-        )
-        st.plotly_chart(fig, use_container_width=True)
     else:
-        st.error("🚫 訊號中斷，請重試。")
+        st.markdown("<h2 style='text-align:center; color:#ae3f2f; font-family:Chewy;'>🚫 SIGNAL LOST!</h2>", unsafe_allow_html=True)
+else:
+    st.markdown("<div style='text-align:center; font-size:100px; margin-top:50px;'>📽️</div>", unsafe_allow_html=True)
