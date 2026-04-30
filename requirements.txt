@@ -3,5 +3,6 @@ yfinance
 pandas
 plotly
 googletrans==4.0.0-rc1
+httpx==0.13.3
 streamlit-autorefresh
 feedparser
